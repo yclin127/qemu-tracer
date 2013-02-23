@@ -338,6 +338,10 @@ bool is_tcg_gen_code(uintptr_t pc_ptr);
 
 #if !defined(CONFIG_USER_ONLY)
 
+#if 1 /* yclin */
+#include "tracer/tracer.h"
+#endif
+
 struct MemoryRegion *iotlb_to_region(hwaddr index);
 uint64_t io_mem_read(struct MemoryRegion *mr, hwaddr addr,
                      unsigned size);

@@ -57,6 +57,10 @@
 #endif
 #endif
 
+#if 1 /* yclin */
+#include "tracer/code_marker.h"
+#endif
+
 #include "exec/cputlb.h"
 #include "translate-all.h"
 
@@ -171,7 +175,13 @@ int cpu_gen_code(CPUArchState *env, TranslationBlock *tb, int *gen_code_size_ptr
 #endif
     tcg_func_start(s);
 
+#if 1 /* yclin */
+    code_marker_begin();
+#endif
     gen_intermediate_code(env, tb);
+#if 1 /* yclin */
+    code_marker_end();
+#endif
 
     /* generate machine code */
     gen_code_buf = tb->tc_ptr;
@@ -227,7 +237,13 @@ static int cpu_restore_state_from_tb(TranslationBlock *tb, CPUArchState *env,
 #endif
     tcg_func_start(s);
 
+#if 1 /* yclin */
+    code_marker_begin();
+#endif
     gen_intermediate_code_pc(env, tb);
+#if 1 /* yclin */
+    code_marker_end();
+#endif
 
     if (use_icount) {
         /* Reset the cycle counter to the start of the block.  */
@@ -688,6 +704,11 @@ static void page_flush_tb(void)
     }
 }
 
+#if 1 /* yclin */
+#include "tracer/memory_tracer.h"
+int tracer_toggle_request = 0;
+#endif
+
 /* flush all the translation blocks */
 /* XXX: tb_flush is currently not thread safe */
 void tb_flush(CPUArchState *env1)
@@ -704,6 +725,16 @@ void tb_flush(CPUArchState *env1)
         > code_gen_buffer_size) {
         cpu_abort(env1, "Internal error: code buffer overflow\n");
     }
+    
+#if 1 /* yclin */
+    if (tracer_toggle_request) {
+        memory_tracer_toggle();
+        tracer_toggle_request = 0;
+    } else {
+        memory_tracer_flush();
+    }
+#endif
+
     nb_tbs = 0;
 
     for (env = first_cpu; env != NULL; env = env->next_cpu) {

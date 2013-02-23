@@ -489,6 +489,11 @@ static void toggle_full_screen(DisplayState *ds)
     vga_hw_update();
 }
 
+#if 1 /* yclin */
+extern int tracer_toggle_request;
+extern int tracer_capture_count;
+#endif
+
 static void handle_keydown(DisplayState *ds, SDL_Event *ev)
 {
     int mod_state;
@@ -507,6 +512,16 @@ static void handle_keydown(DisplayState *ds, SDL_Event *ev)
     if (gui_key_modifier_pressed) {
         keycode = sdl_keyevent_to_keycode(&ev->key);
         switch (keycode) {
+#if 1 /* yclin */
+        case 0x10: /* 'q' key on US keyboard */
+            tracer_toggle_request = 1;
+            gui_keysym = 1;
+            break;
+        case 0x11: /* 'w' key on US keyboard */
+            tracer_capture_count = 256;
+            gui_keysym = 1;
+            break;
+#endif
         case 0x21: /* 'f' key on US keyboard */
             toggle_full_screen(ds);
             gui_keysym = 1;

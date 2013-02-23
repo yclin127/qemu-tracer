@@ -97,6 +97,15 @@ glue(glue(cpu_ld, USUFFIX), MEMSUFFIX)(CPUArchState *env, target_ulong ptr)
     } else {
         uintptr_t hostaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
         res = glue(glue(ld, USUFFIX), _raw)(hostaddr);
+#if 1 /* yclin */
+#if ACCESS_TYPE == (NB_MMU_MODES + 1)
+        target_ulong paddr =  addr + env->tlb_table[mmu_idx][page_index].phys_addend;
+        code_marker_access(addr, paddr, TRACER_CODE_TYPE(DATA_SIZE, mmu_idx, ENV_GET_CPU(env)->cpu_index));
+#else
+        target_ulong paddr =  addr + env->tlb_table[mmu_idx][page_index].phys_addend;
+        memory_tracer_access(addr, paddr, TRACER_READ_TYPE(DATA_SIZE, mmu_idx, ENV_GET_CPU(env)->cpu_index));
+#endif
+#endif
     }
     return res;
 }
@@ -119,6 +128,15 @@ glue(glue(cpu_lds, SUFFIX), MEMSUFFIX)(CPUArchState *env, target_ulong ptr)
     } else {
         uintptr_t hostaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
         res = glue(glue(lds, SUFFIX), _raw)(hostaddr);
+#if 1 /* yclin */
+#if ACCESS_TYPE == (NB_MMU_MODES + 1)
+        target_ulong paddr =  addr + env->tlb_table[mmu_idx][page_index].phys_addend;
+        code_marker_access(addr, paddr, TRACER_CODE_TYPE(DATA_SIZE, mmu_idx, ENV_GET_CPU(env)->cpu_index));
+#else
+        target_ulong paddr =  addr + env->tlb_table[mmu_idx][page_index].phys_addend;
+        memory_tracer_access(addr, paddr, TRACER_READ_TYPE(DATA_SIZE, mmu_idx, ENV_GET_CPU(env)->cpu_index));
+#endif
+#endif
     }
     return res;
 }
@@ -145,6 +163,10 @@ glue(glue(cpu_st, SUFFIX), MEMSUFFIX)(CPUArchState *env, target_ulong ptr,
     } else {
         uintptr_t hostaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
         glue(glue(st, SUFFIX), _raw)(hostaddr, v);
+#if 1 /* yclin */
+        target_ulong paddr =  addr + env->tlb_table[mmu_idx][page_index].phys_addend;
+        memory_tracer_access(addr, paddr, TRACER_WRITE_TYPE(DATA_SIZE, mmu_idx, ENV_GET_CPU(env)->cpu_index));
+#endif
     }
 }
 

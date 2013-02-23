@@ -1091,11 +1091,21 @@ void vm_stop_force_state(RunState state)
     }
 }
 
+#if 1 /* yclin */
+extern int tracer_toggle_request;
+#endif
+
 static int tcg_cpu_exec(CPUArchState *env)
 {
     int ret;
 #ifdef CONFIG_PROFILER
     int64_t ti;
+#endif
+
+#if 1 /* yclin */
+    if (tracer_toggle_request) {
+        tb_flush(env);
+    }
 #endif
 
 #ifdef CONFIG_PROFILER

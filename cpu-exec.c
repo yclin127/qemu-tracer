@@ -23,6 +23,10 @@
 #include "qemu/atomic.h"
 #include "sysemu/qtest.h"
 
+#if 1 /* yclin */
+#include "tracer/code_marker.h"
+#endif
+
 int tb_invalidated_flag;
 
 //#define CONFIG_DEBUG_EXEC
@@ -632,6 +636,9 @@ int cpu_exec(CPUArchState *env)
         } else {
             /* Reload env after longjmp - the compiler may have smashed all
              * local variables as longjmp is marked 'noreturn'. */
+#if 1 /* yclin */
+            code_marker_end();
+#endif
             env = cpu_single_env;
         }
     } /* for(;;) */

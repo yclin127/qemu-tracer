@@ -81,9 +81,17 @@ typedef uint64_t target_ulong __attribute__((aligned(TARGET_LONG_ALIGNMENT)));
 #define CPU_TLB_SIZE (1 << CPU_TLB_BITS)
 
 #if HOST_LONG_BITS == 32 && TARGET_LONG_BITS == 32
+#if 1 /* yclin */
+#define CPU_TLB_ENTRY_BITS 5
+#else
 #define CPU_TLB_ENTRY_BITS 4
+#endif
+#else
+#if 1 /* yclin */
+#define CPU_TLB_ENTRY_BITS 6
 #else
 #define CPU_TLB_ENTRY_BITS 5
+#endif
 #endif
 
 typedef struct CPUTLBEntry {
@@ -96,13 +104,22 @@ typedef struct CPUTLBEntry {
     target_ulong addr_read;
     target_ulong addr_write;
     target_ulong addr_code;
+#if 1 /* yclin */
+    /* Addend to virtual address to get physical address. */
+    target_ulong phys_addend;
+#endif
     /* Addend to virtual address to get host address.  IO accesses
        use the corresponding iotlb value.  */
     uintptr_t addend;
     /* padding to get a power of two size */
     uint8_t dummy[(1 << CPU_TLB_ENTRY_BITS) -
+#if 1 /* yclin */
+                  (sizeof(target_ulong) * 4 +
+                   ((-sizeof(target_ulong) * 4) & (sizeof(uintptr_t) - 1)) +
+#else
                   (sizeof(target_ulong) * 3 +
                    ((-sizeof(target_ulong) * 3) & (sizeof(uintptr_t) - 1)) +
+#endif
                    sizeof(uintptr_t))];
 } CPUTLBEntry;
 

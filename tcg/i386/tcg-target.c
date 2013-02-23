@@ -109,6 +109,10 @@ static bool have_cmov;
 # define have_cmov 0
 #endif
 
+#if 1 /* yclin */
+#include "tracer/memory_tracer.h"
+#endif
+
 static uint8_t *tb_ret_addr;
 
 static void patch_reloc(uint8_t *code_ptr, int type,
@@ -1032,6 +1036,10 @@ static void add_qemu_ldst_label(TCGContext *s,
                                 uint8_t *raddr,
                                 uint8_t **label_ptr);
 
+#if 1 /* yclin */
+#include "tracer/memory_tracer.c"
+#endif
+
 /* Perform the TLB load and compare.
 
    Inputs:
@@ -1110,6 +1118,10 @@ static inline void tcg_out_tlb_load(TCGContext *s, int addrlo_idx,
     /* add addend(r0), r1 */
     tcg_out_modrm_offset(s, OPC_ADD_GvEv + P_REXW, r1, r0,
                          offsetof(CPUTLBEntry, addend) - which);
+#if 1 /* yclin */
+    tgen_arithi(s, ARITH_SUB + rexw, r0, which, 0);
+    memory_tracer_dstore(s, addrlo, r0);
+#endif
 }
 #elif defined(__x86_64__) && defined(__linux__)
 # include <asm/prctl.h>
@@ -1242,6 +1254,11 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args,
 
     /* TLB Hit.  */
     tcg_out_qemu_ld_direct(s, data_reg, data_reg2, TCG_REG_L1, 0, 0, opc);
+    
+#if 1 /* yclin */
+    memory_tracer_dfetch(s, TRACER_READ_TYPE(1<<s_bits, mem_index,
+                         ENV_GET_CPU(cpu_single_env)->cpu_index));
+#endif
 
     /* Record the current context of a load into ldst label */
     add_qemu_ldst_label(s,
@@ -1369,6 +1386,11 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args,
 
     /* TLB Hit.  */
     tcg_out_qemu_st_direct(s, data_reg, data_reg2, TCG_REG_L1, 0, 0, opc);
+
+#if 1 /* yclin */
+    memory_tracer_dfetch(s, TRACER_WRITE_TYPE(1<<s_bits, mem_index, 
+                         ENV_GET_CPU(cpu_single_env)->cpu_index));
+#endif
 
     /* Record the current context of a store into ldst label */
     add_qemu_ldst_label(s,
@@ -1922,6 +1944,18 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
         tcg_out_qemu_st(s, args, 3);
         break;
 
+#if 1 /* yclin */
+    case INDEX_op_ifetch:
+        memory_tracer_ifetch(s, args);
+        break;
+    case INDEX_op_iblock:
+        memory_tracer_iblock(s, args);
+        break;
+    case INDEX_op_istep:
+        memory_tracer_istep(s, args);
+        break;
+#endif
+        
 #if TCG_TARGET_REG_BITS == 32
     case INDEX_op_brcond2_i32:
         tcg_out_brcond2(s, args, const_args, 0);
@@ -2173,6 +2207,11 @@ static const TCGTargetOpDef x86_op_defs[] = {
     { INDEX_op_qemu_st32, { "L", "L", "L" } },
     { INDEX_op_qemu_st64, { "L", "L", "L", "L" } },
 #endif
+#if 1 /* yclin */
+    { INDEX_op_ifetch, { } },
+    { INDEX_op_iblock, { } },
+    { INDEX_op_istep, { } },
+#endif
     { -1 },
 };
 
@@ -2251,6 +2290,10 @@ static void tcg_target_qemu_prologue(TCGContext *s)
         tcg_out_pop(s, tcg_target_callee_save_regs[i]);
     }
     tcg_out_opc(s, OPC_RET, 0, 0, 0);
+    
+#if 1 /* yclin */
+    memory_tracer_next_batch_helper(s);
+#endif
 
 #if !defined(CONFIG_SOFTMMU)
     /* Try to set up a segment register to point to GUEST_BASE.  */
@@ -2304,6 +2347,10 @@ static void tcg_target_init(TCGContext *s)
     tcg_regset_set_reg(s->reserved_regs, TCG_REG_CALL_STACK);
 
     tcg_add_target_add_op_defs(x86_op_defs);
+    
+#if 1 /* yclin */
+    memory_tracer_init();
+#endif
 }
 
 typedef struct {

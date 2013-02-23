@@ -281,6 +281,9 @@ void tlb_set_page(CPUArchState *env, target_ulong vaddr,
     env->iotlb[mmu_idx][index] = iotlb - vaddr;
     te = &env->tlb_table[mmu_idx][index];
     te->addend = addend - vaddr;
+#if 1 /* yclin */
+    te->phys_addend = paddr - vaddr;
+#endif
     if (prot & PAGE_READ) {
         te->addr_read = address;
     } else {

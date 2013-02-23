@@ -2727,3 +2727,7 @@ static inline void tcg_gen_qemu_st64(TCGv_i64 arg, TCGv addr, int mem_index)
                                                  TCGV_PTR_TO_NAT(A), (B))
 #define tcg_gen_ext_i32_ptr(R, A) tcg_gen_ext_i32_i64(TCGV_PTR_TO_NAT(R), (A))
 #endif /* TCG_TARGET_REG_BITS != 32 */
+
+#if 1 /* yclin */
+#include "tracer/code_marker.h"
+#endif

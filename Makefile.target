@@ -75,6 +75,15 @@ obj-y += target-$(TARGET_BASE_ARCH)/
 obj-y += disas.o
 obj-$(CONFIG_GDBSTUB_XML) += gdbstub-xml.o
 
+# yclin
+QEMU_CFLAGS+=-I/usr/include/python2.7 -L/usr/lib/python2.7/config/
+LIBS+=-lpython2.7
+obj-y += tracer/code_marker.o
+# memory_tracer.c is included in tcg/tcg.c
+obj-y += tracer/sync_queue.o
+obj-y += tracer/cache_filter.o
+obj-y += tracer/trace_file.o
+
 #########################################################
 # Linux user emulator target
 
