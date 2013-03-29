@@ -67,13 +67,8 @@ void code_marker_insn_end(void)
         ifetch_count += 1;
         request += 1;
         assert(ifetch_count < IFETCH_TABLE_SIZE);
-#ifdef CONFIG_IFETCH_TABLE
         last_opc_ptr[0] = ifetch_count == 1 ? INDEX_op_iblock : INDEX_op_istep;
         last_opparam_ptr[0] = ifetch_count;
-#else
-        last_opc_ptr[0] = INDEX_op_ifetch;
-        last_opparam_ptr[0] = ifetch_count;
-#endif
     }
     
     // merge it into former request

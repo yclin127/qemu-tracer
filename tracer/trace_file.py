@@ -17,10 +17,10 @@ def trace_file_init():
     pass
 
 def trace_file_begin():
-    pass
+    print '===trace begin==='
 
 def trace_file_end():
-    pass
+    print '===trace end==='
 
 def trace_file_log(vaddr, paddr, flags, icount):
     pass

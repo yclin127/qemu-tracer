@@ -4,12 +4,6 @@
 #include "qemu-common.h"
 #include "tracer/trace_file.h"
 
-#define CONFIG_IFETCH_TABLE
-#define CONFIG_REQUEST_BATCH
-#define CONFIG_SYNC_QUEUE
-#define CONFIG_CACHE_FILTER
-#define CONFIG_FILE_LOGGER
-
 #define __size(b)   ((target_ulong)1<<(b))
 #define __mask(x,b,o) ((x)&(__size((b)+(o))-__size(o)))
 #define __trim(x,b,o) (((x)>>(o))&(__size(b)-1))

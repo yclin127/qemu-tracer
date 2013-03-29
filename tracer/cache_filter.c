@@ -39,15 +39,11 @@ static inline void cache_access(cache_t *cache, const request_t *request, uint64
         data = (data_t *)line->data;
         if (unlikely(line->tag != paddr)) {
             if (data->flags & TRACER_TYPE_WRITE) {
-#ifdef CONFIG_FILE_LOGGER
                 // write back
                 trace_file_log(data->vtag, line->tag, data->flags | TRACER_TYPE_MEM_WRITE, icount);
-#endif
             }
-#ifdef CONFIG_FILE_LOGGER
             // miss
             trace_file_log(vaddr, paddr, request->type.flags | TRACER_TYPE_MEM_READ, icount);
-#endif
             line->tag = paddr;
             data->vtag = vaddr;
             data->flags = 0;
@@ -74,43 +70,32 @@ static inline void cache_access(cache_t *cache, const request_t *request, uint64
  * concurreny fifo
  */
 
-#ifdef CONFIG_SYNC_QUEUE
 static QemuThread cache_filter_thread;
 static QemuSemaphore cache_filter_ready;
 static void *cache_filter_main(void *args);
-#endif
 
 void cache_filter_init(void)
 {
-#ifdef CONFIG_SYNC_QUEUE
     qemu_sem_init(&cache_filter_ready, 0);
     qemu_thread_create(&cache_filter_thread, cache_filter_main, 
         NULL, QEMU_THREAD_DETACHED);
     qemu_sem_wait(&cache_filter_ready);
-#endif
 }
 
-#ifdef CONFIG_SYNC_QUEUE
 static void *cache_filter_main(void *args)
 {
     const batch_t *batch = NULL;
     const request_t *request;
     uint64_t icount = 0;
     
-#ifdef CONFIG_CACHE_FILTER
-    cache_t cache;
-    cache_create(&cache);
-#endif
-    
-#ifdef CONFIG_IFETCH_TABLE
     const request_t *ifetch_table = NULL;
     const request_t *ifetch_ptr;
     int ifetch_count = 0;
-#endif
+    
+    cache_t cache;
+    cache_create(&cache);
 
-#ifdef CONFIG_FILE_LOGGER
     trace_file_init();
-#endif
     
     qemu_sem_post(&cache_filter_ready);
     
@@ -120,24 +105,18 @@ static void *cache_filter_main(void *args)
         
         // iblock with a NULL pointer is used to begin a new trace
         if (unlikely(!request->type.flags && request->pointer == NULL)) {
-#ifdef CONFIG_FILE_LOGGER
             trace_file_begin();
-#endif
-#ifdef CONFIG_CACHE_FILTER
             lru_reset(&cache);
-#endif
             icount = 0;
             ++request;
         }
         // iblock with a -1 pointer is used to end current trace
         if (unlikely(!request->type.flags && request->pointer == (void *)-1)) {
-#ifdef CONFIG_FILE_LOGGER
             trace_file_end();
-#endif
+            ++request;
         }
         
         for(; request < (request_t *)batch->tail; ++request) {
-#ifdef CONFIG_IFETCH_TABLE
             // iblock
             if (!request->type.flags) {
                 ifetch_table = request->pointer;
@@ -147,36 +126,19 @@ static void *cache_filter_main(void *args)
             if (unlikely(!ifetch_table)) {
                 continue;
             }
-#endif            
+            
             // dfetch & ifetch
             if (request->type.flags) {
-#ifdef CONFIG_CACHE_FILTER
                 cache_access(&cache, request, icount);
-#else
-#ifdef CONFIG_FILE_LOGGER
-                trace_file_log(request->vaddr, request->paddr, request->type.flags, icount);
-#endif
-#endif
-#ifndef CONFIG_IFETCH_TABLE
                 icount += request->type.count;
-#endif
             }
             
-#ifdef CONFIG_IFETCH_TABLE
             // istep
             for (; ifetch_count < request->type.count; ++ifetch_count) {
                 ifetch_ptr = &ifetch_table[ifetch_count];
-#ifdef CONFIG_CACHE_FILTER
                 cache_access(&cache, ifetch_ptr, icount);
-#else
-#ifdef CONFIG_FILE_LOGGER
-                trace_file_log(ifetch_ptr->vaddr, ifetch_ptr->paddr, 
-                               ifetch_ptr->type.flags, icount);
-#endif
-#endif
                 icount += ifetch_ptr->type.count;
             }
-#endif
         }
         
         sync_queue_put(1);
@@ -184,4 +146,3 @@ static void *cache_filter_main(void *args)
     
     return NULL;
 }
-#endif

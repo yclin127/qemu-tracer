@@ -11,43 +11,31 @@ static batch_t *batch = NULL;
 
 void memory_tracer_init(void)
 {
-#ifdef CONFIG_SYNC_QUEUE
     sync_queue_init();
     cache_filter_init();
+    
     batch = sync_queue_get(0);
-#else
-    batch = g_malloc(sizeof(batch_t));
-    batch->head= g_malloc(BATCH_SIZE);
-#endif
     batch->tail = batch->head;
-#ifdef CONFIG_FILE_LOGGER
+    
     if (memory_tracer_enabled) {
         memory_tracer_enabled = 0;
         memory_tracer_toggle();
     }
-#endif
 }
 
-#ifdef CONFIG_REQUEST_BATCH
 static batch_t *memory_tracer_next_batch(void) 
 {
     batch_t *next_batch;
     
-#ifdef CONFIG_SYNC_QUEUE
     sync_queue_put(0);
     next_batch = sync_queue_get(0);
-#else
-    next_batch = batch;
-#endif
     next_batch->tail = next_batch->head;
     
     return next_batch;
 }
-#endif
 
 void memory_tracer_toggle(void)
 {
-#ifdef CONFIG_REQUEST_BATCH
     if (!memory_tracer_enabled) {
         // begin a new trace by a batch beginning with a NULL-pointer iblock
         request_t *request = (request_t *)batch->tail;
@@ -64,7 +52,6 @@ void memory_tracer_toggle(void)
         // flush current trace
         memory_tracer_flush();
     }
-#endif
     memory_tracer_enabled = !memory_tracer_enabled;
 }
 
@@ -72,9 +59,7 @@ void memory_tracer_flush(void)
 {
     if (memory_tracer_enabled) {
         batch = memory_tracer_next_batch();
-#ifdef CONFIG_SYNC_QUEUE
         sync_queue_flush();
-#endif
     }
 }
 
@@ -129,9 +114,7 @@ void memory_tracer_dfetch(TCGContext *s, const uint64_t request_type)
     if (!memory_tracer_enabled) return;
     
     memory_tracer_batch_prepare(s);
-#ifdef CONFIG_REQUEST_BATCH
     memory_tracer_batch_allocate(s);
-#endif
     
     /* r1_req->vaddr = stack[0];
      * r1_req->paddr = stack[0]+stack[1]->phys_addend;
@@ -167,9 +150,7 @@ void memory_tracer_ifetch(TCGContext *s, const TCGArg *args)
     tcg_out_push(s, r2_ptr);
     
     memory_tracer_batch_prepare(s);
-#ifdef CONFIG_REQUEST_BATCH
     memory_tracer_batch_allocate(s);
-#endif
     
     tcg_out_pop(s, r2_ptr);
     
@@ -212,9 +193,7 @@ void memory_tracer_iblock(TCGContext *s, const TCGArg *args)
     tcg_out_push(s, r2_ptr);
     
     memory_tracer_batch_prepare(s);
-#ifdef CONFIG_REQUEST_BATCH
     memory_tracer_batch_allocate(s);
-#endif
     
     tcg_out_pop(s, r2_ptr);
     
@@ -301,7 +280,6 @@ static void *next_batch_helper_ptr = NULL;
 
 void memory_tracer_next_batch_helper(TCGContext *s)
 {
-#ifdef CONFIG_REQUEST_BATCH
     next_batch_helper_ptr = s->code_ptr;
     
     /* r2_ptr = batch = memory_tracer_next_batch();
@@ -326,7 +304,6 @@ void memory_tracer_next_batch_helper(TCGContext *s)
         // ret
         tcg_out_opc(s, OPC_RET, 0, 0, 0);
     }
-#endif
 }
  
 /*

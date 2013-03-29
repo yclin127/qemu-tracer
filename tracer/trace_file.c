@@ -46,7 +46,6 @@ void trace_file_init(void)
     py_trace_file_log = PyObject_GetAttrString(py_trace_file_module, "trace_file_log");
     if (!(py_trace_file_log && PyCallable_Check(py_trace_file_log))) exit(0);
     
-#ifdef CONFIG_CACHE_FILTER
     PyObject* value;
     
     value = PyObject_GetAttrString(py_trace_file_module, "CACHE_LINE_BITS");
@@ -63,7 +62,6 @@ void trace_file_init(void)
     if (!value) exit(0);
     cache_way_count = PyLong_AsLong(value);
     Py_DECREF(value);
-#endif
     
     value = PyObject_CallObject(py_trace_file_init, NULL);
     if (value == NULL) exit(0);
