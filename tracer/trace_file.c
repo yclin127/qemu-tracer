@@ -7,10 +7,11 @@
 #include "Python.h"
 
 int cache_line_bits = 6;
-int cache_set_bits  = 14;
+int cache_set_bits  = 12;
 int cache_way_count = 8;
 
 PyObject* py_trace_file_module = NULL;
+PyObject* py_trace_file_init = NULL;
 PyObject* py_trace_file_begin = NULL;
 PyObject* py_trace_file_end = NULL;
 PyObject* py_trace_file_log = NULL;
@@ -32,6 +33,9 @@ void trace_file_init(void)
 
     py_trace_file_module = PyImport_Import(PyString_FromString("trace_file"));
     if (!py_trace_file_module) exit(0);
+    
+    py_trace_file_init = PyObject_GetAttrString(py_trace_file_module, "trace_file_init");
+    if (!(py_trace_file_init && PyCallable_Check(py_trace_file_init))) exit(0);
     
     py_trace_file_begin = PyObject_GetAttrString(py_trace_file_module, "trace_file_begin");
     if (!(py_trace_file_begin && PyCallable_Check(py_trace_file_begin))) exit(0);
@@ -60,6 +64,10 @@ void trace_file_init(void)
     cache_way_count = PyLong_AsLong(value);
     Py_DECREF(value);
 #endif
+    
+    value = PyObject_CallObject(py_trace_file_init, NULL);
+    if (value == NULL) exit(0);
+    Py_DECREF(value);
 }
 
 void trace_file_begin(void)

@@ -23,8 +23,10 @@ static inline void cache_access(cache_t *cache, const request_t *request, uint64
     line_t *line;
     data_t *data;
     
+    // make sure there's nothing funny going on around here.
+    // otherwise, there're probablity something wrong in code marker or memory tracer.
     assert(!((request->vaddr ^ request->paddr) & 0xfff));
-                         
+    
     // lru_access don't handle unaligned requests, so make them aligned here.
     target_ulong vaddr = request->vaddr & cache->tag_mask;
     target_ulong paddr = request->paddr & cache->tag_mask;
@@ -55,7 +57,7 @@ static inline void cache_access(cache_t *cache, const request_t *request, uint64
         
         assert(counter++ < 3);
         
-        // chop up the requests if they cross cachelines
+        // chop up requests if they cross cachelines
         if (likely(paddr == limit)) break;
         paddr += __size(cache->line_bits);
     }
@@ -73,15 +75,18 @@ static inline void cache_access(cache_t *cache, const request_t *request, uint64
  */
 
 #ifdef CONFIG_SYNC_QUEUE
-static QemuThread thread;
+static QemuThread cache_filter_thread;
+static QemuSemaphore cache_filter_ready;
 static void *cache_filter_main(void *args);
 #endif
 
 void cache_filter_init(void)
 {
 #ifdef CONFIG_SYNC_QUEUE
-    qemu_thread_create(&thread, cache_filter_main, 
+    qemu_sem_init(&cache_filter_ready, 0);
+    qemu_thread_create(&cache_filter_thread, cache_filter_main, 
         NULL, QEMU_THREAD_DETACHED);
+    qemu_sem_wait(&cache_filter_ready);
 #endif
 }
 
@@ -102,13 +107,19 @@ static void *cache_filter_main(void *args)
     const request_t *ifetch_ptr;
     int ifetch_count = 0;
 #endif
+
+#ifdef CONFIG_FILE_LOGGER
+    trace_file_init();
+#endif
+    
+    qemu_sem_post(&cache_filter_ready);
     
     for (;;) {
         batch = sync_queue_get(1);
-        
-        // iblock with a NULL pointer is used to start a new trace
         request = (request_t *)batch->head;
-        if (unlikely(!request->type.flags && !request->pointer)) {
+        
+        // iblock with a NULL pointer is used to begin a new trace
+        if (unlikely(!request->type.flags && request->pointer == NULL)) {
 #ifdef CONFIG_FILE_LOGGER
             trace_file_begin();
 #endif
@@ -117,6 +128,12 @@ static void *cache_filter_main(void *args)
 #endif
             icount = 0;
             ++request;
+        }
+        // iblock with a -1 pointer is used to end current trace
+        if (unlikely(!request->type.flags && request->pointer == (void *)-1)) {
+#ifdef CONFIG_FILE_LOGGER
+            trace_file_end();
+#endif
         }
         
         for(; request < (request_t *)batch->tail; ++request) {

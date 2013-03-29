@@ -11,12 +11,6 @@ static batch_t *batch = NULL;
 
 void memory_tracer_init(void)
 {
-#ifdef CONFIG_FILE_LOGGER
-    trace_file_init();
-    if (memory_tracer_enabled) {
-        trace_file_begin();
-    }
-#endif
 #ifdef CONFIG_SYNC_QUEUE
     sync_queue_init();
     cache_filter_init();
@@ -26,6 +20,12 @@ void memory_tracer_init(void)
     batch->head= g_malloc(BATCH_SIZE);
 #endif
     batch->tail = batch->head;
+#ifdef CONFIG_FILE_LOGGER
+    if (memory_tracer_enabled) {
+        memory_tracer_enabled = 0;
+        memory_tracer_toggle();
+    }
+#endif
 }
 
 #ifdef CONFIG_REQUEST_BATCH
@@ -47,40 +47,35 @@ static batch_t *memory_tracer_next_batch(void)
 
 void memory_tracer_toggle(void)
 {
+#ifdef CONFIG_REQUEST_BATCH
     if (!memory_tracer_enabled) {
-        fprintf(stderr, "=== start trace ===\n");
-        // start a new trace by a iblock with NULL pointer
+        // begin a new trace by a batch beginning with a NULL-pointer iblock
         request_t *request = (request_t *)batch->tail;
         request->pointer = NULL;
         request->type.value = 0;
-#ifdef CONFIG_REQUEST_BATCH
         batch->tail = (void *)(request+1);
-#endif
     } else {
-        // flush the old trace
+        // end current trace by a batch beginning with a (-1)-pointer iblock
+        batch = memory_tracer_next_batch();
+        request_t *request = (request_t *)batch->tail;
+        request->pointer = (void *)-1;
+        request->type.value = 0;
+        batch = memory_tracer_next_batch();
+        // flush current trace
         memory_tracer_flush();
-#ifdef CONFIG_SYNC_QUEUE
-#ifdef CONFIG_FILE_LOGGER
-        trace_file_end();
-#endif
-#endif
-        fprintf(stderr, "=== end trace ===\n");
     }
+#endif
     memory_tracer_enabled = !memory_tracer_enabled;
 }
 
 void memory_tracer_flush(void)
 {
-#ifdef CONFIG_IFETCH_TABLE
     if (memory_tracer_enabled) {
-#ifdef CONFIG_REQUEST_BATCH
         batch = memory_tracer_next_batch();
-#endif
 #ifdef CONFIG_SYNC_QUEUE
         sync_queue_flush();
 #endif
     }
-#endif
 }
 
 /*
