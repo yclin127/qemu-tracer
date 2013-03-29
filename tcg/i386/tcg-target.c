@@ -1945,9 +1945,6 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
         break;
 
 #if 1 /* yclin */
-    case INDEX_op_ifetch:
-        memory_tracer_ifetch(s, args);
-        break;
     case INDEX_op_iblock:
         memory_tracer_iblock(s, args);
         break;
@@ -2208,7 +2205,6 @@ static const TCGTargetOpDef x86_op_defs[] = {
     { INDEX_op_qemu_st64, { "L", "L", "L", "L" } },
 #endif
 #if 1 /* yclin */
-    { INDEX_op_ifetch, { } },
     { INDEX_op_iblock, { } },
     { INDEX_op_istep, { } },
 #endif

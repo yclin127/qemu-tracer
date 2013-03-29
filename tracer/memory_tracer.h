@@ -8,7 +8,6 @@ void memory_tracer_flush(void);
 #ifdef TCGv
 void memory_tracer_dstore(TCGContext *s, const int address, const int tlb_entry);
 void memory_tracer_dfetch(TCGContext *s, const uint64_t request_type);
-void memory_tracer_ifetch(TCGContext *s, const TCGArg *args);
 void memory_tracer_iblock(TCGContext *s, const TCGArg *args);
 void memory_tracer_istep(TCGContext *s, const TCGArg *args);
 void memory_tracer_next_batch_helper(TCGContext *s);

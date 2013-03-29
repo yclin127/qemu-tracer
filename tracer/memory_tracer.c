@@ -72,13 +72,11 @@ void memory_tracer_access(target_ulong vaddr, target_ulong paddr, uint64_t type)
     if (!memory_tracer_enabled) return;
     
     request_t *request = (request_t *)batch->tail;
-#ifdef CONFIG_REQUEST_BATCH
     if ((void *)request >= batch->head+BATCH_SIZE-sizeof(request_t)) {
         batch = memory_tracer_next_batch();
         request = (request_t *)batch->tail;
     }
     batch->tail = (void *)request+sizeof(request_t);
-#endif
     
     request->vaddr = vaddr;
     request->paddr = paddr;
@@ -141,46 +139,6 @@ void memory_tracer_dfetch(TCGContext *s, const uint64_t request_type)
     }
 }
 
-void memory_tracer_ifetch(TCGContext *s, const TCGArg *args)
-{
-    if (!memory_tracer_enabled) return;
-    
-    tcg_out_push(s, r0_tmp);
-    tcg_out_push(s, r1_req);
-    tcg_out_push(s, r2_ptr);
-    
-    memory_tracer_batch_prepare(s);
-    memory_tracer_batch_allocate(s);
-    
-    tcg_out_pop(s, r2_ptr);
-    
-    /* request = &(ifetch_table[args[0]-1]);
-     * r1_req->vaddr = request->vaddr;
-     * r1_req->paddr = request->paddr;
-     * r1_req->type.value = request->type.value;
-     */ {
-        request_t *request = &(ifetch_table[args[0]-1]);
-        // mov args[0], r0_tmp
-        // mov r0_tmp, r1_req->vaddr
-        tcg_out_movi(s, type, r0_tmp, request->vaddr);
-        tcg_out_modrm_offset(s, OPC_MOVL_EvGv + rexw, r0_tmp, 
-                             r1_req, offsetof(request_t,vaddr));
-        // mov args[1], r0_tmp
-        // mov r0_tmp, r1_req->paddr
-        tcg_out_movi(s, type, r0_tmp, request->paddr);
-        tcg_out_modrm_offset(s, OPC_MOVL_EvGv + rexw, r0_tmp, 
-                             r1_req, offsetof(request_t,paddr));
-        // mov args[2], r0_tmp
-        // mov r0_tmp, r1_req->type
-        tcg_out_movi(s, TCG_TYPE_I64, r0_tmp, request->type.value | TRACER_TYPE_IFETCH);
-        tcg_out_modrm_offset(s, OPC_MOVL_EvGv + P_REXW, r0_tmp, 
-                             r1_req, offsetof(request_t, type));
-    }
-    
-    tcg_out_pop(s, r1_req);
-    tcg_out_pop(s, r0_tmp);
-}
-
 void memory_tracer_iblock(TCGContext *s, const TCGArg *args)
 {
     if (!memory_tracer_enabled) return;
@@ -231,7 +189,6 @@ void memory_tracer_iblock(TCGContext *s, const TCGArg *args)
     tcg_out_pop(s, r1_req);
     tcg_out_pop(s, r0_tmp);
 }
-
 
 void memory_tracer_istep(TCGContext *s, const TCGArg *args)
 {
