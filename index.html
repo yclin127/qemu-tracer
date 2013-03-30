@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Qemu-tracer : QEMU with memory tracer" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Qemu-tracer</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/yclin127/qemu-tracer">View on GitHub</a>
+
+          <h1 id="project_title">Qemu-tracer</h1>
+          <h2 id="project_tagline">QEMU with memory tracer</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/yclin127/qemu-tracer/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/yclin127/qemu-tracer/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h2>description</h2>
+
+<p>A memory tracer done by TCG hack on QEMU. It comes with a configurable cache filter, and python back-end.</p>
+
+<h2>instructions</h2>
+
+<ul>
+<li>./configure --target-list=x86_64-softmmu --enable-sdl</li>
+<li>make</li>
+<li>x86_64-softmmu/qemu-system-x86_64 -hda [image]
+
+<ul>
+<li>Ctrl+Alt+q: start/stop tracing</li>
+<li>Ctrl+Alt+w: print the most recent 256 requests (for debugging)</li>
+</ul>
+</li>
+</ul><h2>files</h2>
+
+<ul>
+<li>
+<em>tracer/</em>
+
+<ul>
+<li><em>tracer.h</em></li>
+<li><em>config.h</em></li>
+<li><em>code_marker.c, code_marker.h</em></li>
+<li><em>memory_tracer.c, memory_tracer.h</em></li>
+<li><em>sync_queue.c, sync_queue.h</em></li>
+<li><em>cache_filter.c, cache_filter.h, lru_algorithm.h</em></li>
+<li><em>trace_file.c, trace_file.h, trace_file.py</em></li>
+</ul>
+</li>
+<li>cpu-exec.c</li>
+<li>cpus.c</li>
+<li>cputlb.c</li>
+<li>include/
+
+<ul>
+<li>exec/</li>
+<li>cpu-defs.h</li>
+<li>exec-all.h</li>
+<li>softmmu_header.h</li>
+<li>softmmu_template.h</li>
+</ul>
+</li>
+<li>target-i386/
+
+<ul>
+<li>translate.c</li>
+</ul>
+</li>
+<li>tcg/
+
+<ul>
+<li>tcg-op.h</li>
+<li>tcg-opc.h</li>
+<li>i386/</li>
+<li>tcg-target.c</li>
+</ul>
+</li>
+<li>translate-all.c</li>
+<li>ui/
+
+<ul>
+<li>sdl.c</li>
+</ul>
+</li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Qemu-tracer maintained by <a href="https://github.com/yclin127">yclin127</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
