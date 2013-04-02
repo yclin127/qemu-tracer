@@ -2203,7 +2203,7 @@ if $pkg_config python --modversion > /dev/null 2>&1; then
   libs_softmmu="$python_libs $libs_softmmu"
   QEMU_CFLAGS="$QEMU_CFLAGS $python_cflags"
 else
-    echo "python not present."
+    echo "python-dev not present."
     exit 1
 fi
 
