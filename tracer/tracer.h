@@ -9,6 +9,7 @@
 // memory types
 #define TRACER_TYPE_MEM_READ  0x10
 #define TRACER_TYPE_MEM_WRITE 0x20
+#define TRACER_TYPE_TLB_WALK  0x40
 // source types
 #define TRACER_TYPE_DHELPER 0x100
 #define TRACER_TYPE_DFETCH  0x200

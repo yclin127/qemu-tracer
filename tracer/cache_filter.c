@@ -57,7 +57,7 @@ static inline void cache_access(const request_t *request, uint64_t icount)
                 //trace_file_log(line->tag, tlb_data->ptag, TRACER_TYPE_TLB_EVICT, icount);
             }
             // tlb walk
-            //trace_file_log(vaddr, paddr, TRACER_TYPE_TLB_WALK, icount);
+            trace_file_log(vaddr, paddr, request->type.flags | TRACER_TYPE_TLB_WALK, icount);
             // reset entry
             line->tag = vaddr;
             tlb_data->ptag = paddr;
@@ -86,8 +86,7 @@ static inline void cache_access(const request_t *request, uint64_t icount)
                     tlb_data->write_count++;
                 }
                 // miss
-                trace_file_log(vaddr, paddr, request->type.flags | 
-                               TRACER_TYPE_MEM_READ, icount);
+                trace_file_log(vaddr, paddr, request->type.flags | TRACER_TYPE_MEM_READ, icount);
                 tlb_data->read_count++;
                 // reset entry
                 line->tag = paddr;

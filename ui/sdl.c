@@ -803,7 +803,7 @@ static void sdl_refresh(DisplayState *ds)
             handle_activation(ds, ev);
             break;
         case SDL_VIDEORESIZE:
-            sdl_scale(ds, ev->resize.w, ev->resize.h);
+            //sdl_scale(ds, ev->resize.w, ev->resize.h);
             vga_hw_invalidate();
             vga_hw_update();
             break;
