@@ -1,6 +1,7 @@
 #include "tracer/cache_filter.h"
+#include "tracer/code_marker.h"
 #include "tracer/sync_queue.h"
-#include "tracer/config.h"
+#include "tracer/trace_file.h"
 
 #include "qemu/thread.h"
 

@@ -1,7 +1,7 @@
 #ifndef __SYNC_QUEUE_H__
 #define __SYNC_QUEUE_H__
 
-#include "tracer/cache_filter.h"
+#include "tracer/common.h"
 
 void sync_queue_init(void);
 batch_t *sync_queue_get(int id);

@@ -1,10 +1,7 @@
 #include "tracer/memory_tracer.h"
+#include "tracer/code_marker.h"
 #include "tracer/cache_filter.h"
 #include "tracer/sync_queue.h"
-#include "tracer/config.h"
-
-extern request_t ifetch_table[];
-extern uint32_t  ifetch_count;
 
 static int memory_tracer_enabled = 0;
 static batch_t *batch = NULL;

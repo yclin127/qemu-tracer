@@ -1,7 +1,7 @@
 #ifndef __LRU_ALGORITHM_H__
 #define __LRU_ALGORITHM_H__
 
-#include "tracer/config.h"
+#include "qemu-common.h"
 
 typedef struct line_t {
     target_ulong tag;

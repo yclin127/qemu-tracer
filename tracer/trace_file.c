@@ -1,7 +1,5 @@
 #include "tracer/trace_file.h"
 
-#include "tracer/config.h"
-
 #undef _POSIX_C_SOURCE
 #undef _XOPEN_SOURCE
 #include "Python.h"
