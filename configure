@@ -2196,18 +2196,6 @@ else
 fi
 
 ##########################################
-# python 
-if $pkg_config python --modversion > /dev/null 2>&1; then
-  python_cflags=`$pkg_config python --cflags 2> /dev/null`
-  python_libs=`$pkg_config python --libs 2> /dev/null`
-  libs_softmmu="$python_libs $libs_softmmu"
-  QEMU_CFLAGS="$QEMU_CFLAGS $python_cflags"
-else
-    echo "python-dev not present."
-    exit 1
-fi
-
-##########################################
 # libcap probe
 
 if test "$cap" != "no" ; then

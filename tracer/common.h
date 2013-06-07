@@ -10,9 +10,13 @@
 
 #define IFETCH_TABLE_SIZE 256
 
+// between memory tracer & cache filter
 #define CURSOR_COUNT 2
 #define BATCH_COUNT (1<<8)
 #define BATCH_SIZE (1<<16)
+
+// between cache filter & python backend
+#define PACKAGE_SIZE (1<<12)
 
 typedef union {
     uint64_t value;
@@ -33,6 +37,13 @@ typedef struct {
     };
     type_t type;
 } request_t;
+
+typedef struct {
+    target_ulong vaddr;
+    target_ulong paddr;
+    uint64_t flags;
+    uint64_t icount;
+} log_t;
 
 typedef struct {
     void   *head;

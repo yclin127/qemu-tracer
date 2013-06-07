@@ -1,92 +1,86 @@
 #include "tracer/trace_file.h"
 #include "tracer/cache_filter.h"
+#include "tracer/common.h"
 
-#undef _POSIX_C_SOURCE
-#undef _XOPEN_SOURCE
-#include "Python.h"
+static batch_t batch;
+static int backend[2];
 
-PyObject* py_trace_file_module = NULL;
-PyObject* py_trace_file_init = NULL;
-PyObject* py_trace_file_begin = NULL;
-PyObject* py_trace_file_end = NULL;
-PyObject* py_trace_file_log = NULL;
+static void trace_file_flush(void)
+{
+    int size = batch.tail-batch.head;
+    
+    if (write(backend[1], &size, sizeof(size)) != sizeof(size)) {
+        fprintf(stderr, "an error occurred in write().\n");
+        exit(-1);
+    }
+    if (write(backend[1], batch.head, size) != size) {
+        fprintf(stderr, "an error occurred in write().\n");
+        exit(-1);
+    }
+    
+    batch.tail = batch.head;
+}
 
 void trace_file_init(void)
 {
-    atexit(PyErr_Print);
+    batch.head = g_malloc(BATCH_SIZE);
     
-    Py_Initialize();
+    if (pipe(backend)) {
+        fprintf(stderr, "an error occurred in pipe().\n");
+        exit(-1);
+    }
     
-    /* setup python argv */
-    const char *argv[] = {"tracer_file"};
-    PySys_SetArgv(1, (char **)argv);
-    
-    /* setup python path */
-    PyObject *path = PySys_GetObject((char *)"path"); 
-    if (path == NULL) exit(0);
-    PyList_Append(path, PyString_FromString("tracer"));
-
-    py_trace_file_module = PyImport_Import(PyString_FromString("trace_file"));
-    if (!py_trace_file_module) exit(0);
-    
-    py_trace_file_init = PyObject_GetAttrString(py_trace_file_module, "trace_file_init");
-    if (!(py_trace_file_init && PyCallable_Check(py_trace_file_init))) exit(0);
-    
-    py_trace_file_begin = PyObject_GetAttrString(py_trace_file_module, "trace_file_begin");
-    if (!(py_trace_file_begin && PyCallable_Check(py_trace_file_begin))) exit(0);
-    
-    py_trace_file_end = PyObject_GetAttrString(py_trace_file_module, "trace_file_end");
-    if (!(py_trace_file_end && PyCallable_Check(py_trace_file_end))) exit(0);
-    
-    py_trace_file_log = PyObject_GetAttrString(py_trace_file_module, "trace_file_log");
-    if (!(py_trace_file_log && PyCallable_Check(py_trace_file_log))) exit(0);
-    
-    PyObject* value;
-    
-    value = PyObject_GetAttrString(py_trace_file_module, "CACHE_LINE_BITS");
-    if (!value) exit(0);
-    cache_line_bits = PyLong_AsLong(value);
-    Py_DECREF(value);
-    
-    value = PyObject_GetAttrString(py_trace_file_module, "CACHE_SET_BITS");
-    if (!value) exit(0);
-    cache_set_bits = PyLong_AsLong(value);
-    Py_DECREF(value);
-    
-    value = PyObject_GetAttrString(py_trace_file_module, "CACHE_WAY_COUNT");
-    if (!value) exit(0);
-    cache_way_count = PyLong_AsLong(value);
-    Py_DECREF(value);
-    
-    value = PyObject_CallObject(py_trace_file_init, NULL);
-    if (value == NULL) exit(0);
-    Py_DECREF(value);
+    switch (fork()) {
+        case -1:
+            fprintf(stderr, "an error occurred in fork().\n");
+            exit(-1);
+        case 0:
+            dup2(backend[0], 0);
+            close(backend[0]);
+            dup2(backend[1], 1);
+            close(backend[1]);
+            execlp("tracer/trace_file.py", "python", NULL);
+            fprintf(stderr, "an error occurred in exec().\n");
+            exit(-1);
+    }
+        
 }
 
 void trace_file_begin(void)
 {
-    PyObject* value = PyObject_CallObject(py_trace_file_begin, NULL);
-    if (value == NULL) exit(0);
-    Py_DECREF(value);
+    batch.tail = batch.head;
+    
+    int command = 0;
+    if (write(backend[1], &command, sizeof(command)) != sizeof(command)) {
+        fprintf(stderr, "an error occurred in write().\n");
+        exit(-1);
+    }
 }
 
 void trace_file_end(void)
 {
-    PyObject* value = PyObject_CallObject(py_trace_file_end, NULL);
-    if (value == NULL) exit(0);
-    Py_DECREF(value);
+    if (batch.tail != batch.head) {
+        trace_file_flush();
+    }
+    
+    int command = -1;
+    if (write(backend[1], &command, sizeof(command)) != sizeof(command)) {
+        fprintf(stderr, "an error occurred in write().\n");
+        exit(-1);
+    }
 }
 
-void trace_file_log(target_ulong vaddr, target_ulong paddr, uint32_t flags, uint64_t icount)
+void trace_file_log(target_ulong vaddr, target_ulong paddr, uint64_t flags, uint64_t icount)
 {
-    PyObject* arguments = PyTuple_Pack(4,
-        PyInt_FromLong(vaddr),
-        PyInt_FromLong(paddr),
-        PyInt_FromLong(flags),
-        PyInt_FromLong(icount)
-    );
-    PyObject* value = PyObject_CallObject(py_trace_file_log, arguments);
-    if (value == NULL) exit(0);
-    Py_DECREF(value);
-    Py_DECREF(arguments);
+    log_t *log = (log_t*)batch.tail;
+    batch.tail += sizeof(log_t);
+    
+    log->vaddr = vaddr;
+    log->paddr = paddr;
+    log->flags = flags;
+    log->icount = icount;
+    
+    if (batch.tail-batch.head > PACKAGE_SIZE-sizeof(log_t)) {
+        trace_file_flush();
+    }
 }
