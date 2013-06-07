@@ -13,6 +13,7 @@ int tlb_way_count = (1<<3);
 #include "tracer/lru_algorithm.h"
 
 typedef struct {
+    target_ulong ptag;
     uint32_t lookup_count;
     uint32_t read_count;
     uint32_t write_count;
@@ -45,19 +46,21 @@ static inline void cache_access(const request_t *request, uint64_t icount)
     // tlb
     {
         // lru_access don't handle unaligned requests, so make them aligned here.
-        target_ulong vaddr = request->vaddr & cache.tag_mask;
+        target_ulong vaddr = request->vaddr & tlb.tag_mask;
+        target_ulong paddr = request->paddr & tlb.tag_mask;
         
         line = lru_access(&tlb, vaddr);
         tlb_data = (tlb_data_t *)line->data;
         if (unlikely(line->tag != vaddr)) {
             if (line->tag != -1) {
-                // drop entry
-                // trace_file_log(tlb_data->vtag, line->tag, tlb_data->flags | TRACER_TYPE_MEM_WRITE, icount);
+                // evict
+                //trace_file_log(line->tag, tlb_data->ptag, TRACER_TYPE_TLB_EVICT, icount);
             }
             // tlb walk
-            // trace_file_log(vaddr, paddr, request->type.flags | TRACER_TYPE_MEM_READ, icount);
+            //trace_file_log(vaddr, paddr, TRACER_TYPE_TLB_WALK, icount);
             // reset entry
             line->tag = vaddr;
+            tlb_data->ptag = paddr;
             tlb_data->lookup_count = 0;
             tlb_data->read_count   = 0;
             tlb_data->write_count  = 0;
@@ -71,6 +74,7 @@ static inline void cache_access(const request_t *request, uint64_t icount)
         target_ulong vaddr = request->vaddr & cache.tag_mask;
         target_ulong paddr = request->paddr & cache.tag_mask;
         target_ulong limit = (request->paddr+request->type.size-1) & cache.tag_mask;
+        
         for (;;) {
             line = lru_access(&cache, paddr);
             cache_data = (cache_data_t *)line->data;
