@@ -31,9 +31,7 @@ class LOG(Structure):
 
 def on_pipe(fd, condition):
 	length = (c_int*1)()
-	if stdin.readinto(length) == 0:
-		print 'done!'
-		return False
+	stdin.readinto(length)
 	length = length[0]
 	# trace begin
 	if length == 0:
