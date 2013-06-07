@@ -29,11 +29,6 @@ void trace_file_init(void)
         fprintf(stderr, "an error occurred in pipe().\n");
         exit(-1);
     }
-<<<<<<< HEAD
-=======
-    fprintf(stderr, "%d\n", fcntl(backend[0], F_SETPIPE_SZ, 0));
-    fprintf(stderr, "%d\n", fcntl(backend[1], F_SETPIPE_SZ, 0));
->>>>>>> a6f5181813f3d90e32cf24dae4ff948867d34cd6
     
     switch (fork()) {
         case -1:
@@ -85,11 +80,7 @@ void trace_file_log(target_ulong vaddr, target_ulong paddr, uint64_t flags, uint
     log->flags = flags;
     log->icount = icount;
     
-<<<<<<< HEAD
     if (batch.tail-batch.head > PACKAGE_SIZE-sizeof(log_t)) {
-=======
-    if (batch.tail-batch.head > BATCH_SIZE-sizeof(log_t)) {
->>>>>>> a6f5181813f3d90e32cf24dae4ff948867d34cd6
         trace_file_flush();
     }
 }
