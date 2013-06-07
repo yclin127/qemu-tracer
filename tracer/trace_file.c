@@ -1,12 +1,9 @@
 #include "tracer/trace_file.h"
+#include "tracer/cache_filter.h"
 
 #undef _POSIX_C_SOURCE
 #undef _XOPEN_SOURCE
 #include "Python.h"
-
-int cache_line_bits = 6;
-int cache_set_bits  = 12;
-int cache_way_count = 8;
 
 PyObject* py_trace_file_module = NULL;
 PyObject* py_trace_file_init = NULL;
