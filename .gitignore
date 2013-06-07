@@ -71,7 +71,6 @@ fsdev/virtfs-proxy-helper.pod
 *.tp
 *.vr
 *.d
-!scripts/qemu-guest-agent/fsfreeze-hook.d
 *.o
 *.lo
 *.la

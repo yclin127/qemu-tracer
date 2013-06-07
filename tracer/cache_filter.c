@@ -1,75 +1,113 @@
 #include "tracer/cache_filter.h"
-#include "tracer/code_marker.h"
 #include "tracer/sync_queue.h"
 #include "tracer/trace_file.h"
 
-#include "qemu/thread.h"
+int cache_line_bits = 6;
+int cache_set_bits  = 12;
+int cache_way_count = (1<<3);
+
+int tlb_page_bits = 12;
+int tlb_set_bits  = 7;
+int tlb_way_count = (1<<3);
 
 #include "tracer/lru_algorithm.h"
 
-int tracer_capture_count = 0;
+typedef struct {
+    target_ulong ptag;
+    uint32_t lookup_count;
+    uint32_t read_count;
+    uint32_t write_count;
+} tlb_data_t;
 
 typedef struct {
     target_ulong vtag;
     uint32_t flags;
-} data_t;
+} cache_data_t;
 
-static inline void cache_create(cache_t *cache)
+static cache_t tlb;
+static cache_t cache;
+
+static inline void cache_create(void)
 {
-    lru_create(cache, cache_line_bits, cache_set_bits, cache_way_count, sizeof(data_t));
+    lru_create(&tlb, tlb_page_bits, tlb_set_bits, tlb_way_count, sizeof(tlb_data_t));
+    lru_create(&cache, cache_line_bits, cache_set_bits, cache_way_count, sizeof(cache_data_t));
 }
 
-static inline void cache_access(cache_t *cache, const request_t *request, uint64_t icount)
+static inline void cache_access(const request_t *request, uint64_t icount)
 {
     line_t *line;
-    data_t *data;
+    tlb_data_t *tlb_data;
+    cache_data_t *cache_data;
     
     // make sure there's nothing funny going on around here.
     // otherwise, there're probablity something wrong in code marker or memory tracer.
     assert(!((request->vaddr ^ request->paddr) & 0xfff));
     
-    // lru_access don't handle unaligned requests, so make them aligned here.
-    target_ulong vaddr = request->vaddr & cache->tag_mask;
-    target_ulong paddr = request->paddr & cache->tag_mask;
-    target_ulong limit = (request->paddr+request->type.size-1) & cache->tag_mask;
-    
-    uint8_t counter = 0;
-    uint8_t miss = 0;
-    for (;;) {
-        line = lru_access(cache, paddr);
-        data = (data_t *)line->data;
-        if (unlikely(line->tag != paddr)) {
-            if (data->flags & TRACER_TYPE_WRITE) {
-                // write back
-                trace_file_log(data->vtag, line->tag, data->flags | TRACER_TYPE_MEM_WRITE, icount);
+    // tlb
+    {
+        // lru_access don't handle unaligned requests, so make them aligned here.
+        target_ulong vaddr = request->vaddr & tlb.tag_mask;
+        target_ulong paddr = request->paddr & tlb.tag_mask;
+        
+        line = lru_access(&tlb, vaddr);
+        tlb_data = (tlb_data_t *)line->data;
+        if (unlikely(line->tag != vaddr)) {
+            if (line->tag != -1) {
+                // evict
+                //trace_file_log(line->tag, tlb_data->ptag, TRACER_TYPE_TLB_EVICT, icount);
             }
-            // miss
-            trace_file_log(vaddr, paddr, request->type.flags | TRACER_TYPE_MEM_READ, icount);
-            line->tag = paddr;
-            data->vtag = vaddr;
-            data->flags = 0;
-            miss = 1;
+            // tlb walk
+            //trace_file_log(vaddr, paddr, TRACER_TYPE_TLB_WALK, icount);
+            // reset entry
+            line->tag = vaddr;
+            tlb_data->ptag = paddr;
+            tlb_data->lookup_count = 0;
+            tlb_data->read_count   = 0;
+            tlb_data->write_count  = 0;
         }
-        data->flags |= request->type.flags;
-        
-        assert(counter++ < 3);
-        
-        // chop up requests if they cross cachelines
-        if (likely(paddr == limit)) break;
-        paddr += __size(cache->line_bits);
+        tlb_data->lookup_count++;
     }
     
-    if (unlikely(tracer_capture_count && miss)) {
-        fprintf(stderr, "%12lx %12lx %08x %2d %ld\n", 
-                request->vaddr&0xffffffffffff, request->paddr&0xffffffffffff, 
-                request->type.flags, request->type.size, icount);
-        tracer_capture_count -= 1;
+    // cache
+    {
+        // lru_access don't handle unaligned requests, so make them aligned here.
+        target_ulong vaddr = request->vaddr & cache.tag_mask;
+        target_ulong paddr = request->paddr & cache.tag_mask;
+        target_ulong limit = (request->paddr+request->type.size-1) & cache.tag_mask;
+        
+        for (;;) {
+            line = lru_access(&cache, paddr);
+            cache_data = (cache_data_t *)line->data;
+            if (unlikely(line->tag != paddr)) {
+                if (cache_data->flags & TRACER_TYPE_WRITE) {
+                    // write back
+                    trace_file_log(cache_data->vtag, line->tag, cache_data->flags | 
+                                   TRACER_TYPE_MEM_WRITE, icount);
+                    tlb_data->write_count++;
+                }
+                // miss
+                trace_file_log(vaddr, paddr, request->type.flags | 
+                               TRACER_TYPE_MEM_READ, icount);
+                tlb_data->read_count++;
+                // reset entry
+                line->tag = paddr;
+                cache_data->vtag = vaddr;
+                cache_data->flags = 0;
+            }
+            cache_data->flags |= request->type.flags;
+            
+            // chop up requests if they cross cachelines
+            if (likely(paddr == limit)) break;
+            paddr += __size(cache.line_bits);
+        }
     }
 }
 
 /*
  * concurreny fifo
  */
+
+#include "qemu/thread.h"
 
 static QemuThread cache_filter_thread;
 static QemuSemaphore cache_filter_ready;
@@ -93,8 +131,7 @@ static void *cache_filter_main(void *args)
     const request_t *ifetch_ptr;
     int ifetch_count = 0;
     
-    cache_t cache;
-    cache_create(&cache);
+    cache_create();
 
     trace_file_init();
     
@@ -130,14 +167,14 @@ static void *cache_filter_main(void *args)
             
             // dfetch & ifetch
             if (request->type.flags) {
-                cache_access(&cache, request, icount);
+                cache_access(request, icount);
                 icount += request->type.count;
             }
             
             // istep
             for (; ifetch_count < request->type.count; ++ifetch_count) {
                 ifetch_ptr = &ifetch_table[ifetch_count];
-                cache_access(&cache, ifetch_ptr, icount);
+                cache_access(ifetch_ptr, icount);
                 icount += ifetch_ptr->type.count;
             }
         }

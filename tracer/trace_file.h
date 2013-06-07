@@ -3,10 +3,6 @@
 
 #include "qemu-common.h"
 
-extern int cache_line_bits;
-extern int cache_set_bits;
-extern int cache_way_count;
-
 void trace_file_init(void);
 void trace_file_begin(void);
 void trace_file_end(void);
