@@ -1,5 +1,4 @@
 #include "tracer/sync_queue.h"
-#include "tracer/config.h"
 
 typedef struct {
     volatile uint32_t head[CURSOR_COUNT];

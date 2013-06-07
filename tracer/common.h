@@ -2,7 +2,6 @@
 #define __CONFIG_H__
 
 #include "qemu-common.h"
-#include "tracer/trace_file.h"
 
 #define __size(b)   ((target_ulong)1<<(b))
 #define __mask(x,b,o) ((x)&(__size((b)+(o))-__size(o)))
@@ -14,5 +13,30 @@
 #define CURSOR_COUNT 2
 #define BATCH_COUNT (1<<8)
 #define BATCH_SIZE (1<<16)
+
+typedef union {
+    uint64_t value;
+    struct {
+        uint32_t flags;
+        uint16_t size;
+        uint16_t count;
+    };
+} type_t;
+
+typedef struct {
+    union {
+        struct {
+            target_ulong vaddr;
+            target_ulong paddr;
+        };
+        void *pointer;
+    };
+    type_t type;
+} request_t;
+
+typedef struct {
+    void   *head;
+    void   *tail;
+} batch_t;
 
 #endif // __CONFIG_H__
