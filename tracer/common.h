@@ -35,6 +35,13 @@ typedef struct {
 } request_t;
 
 typedef struct {
+    target_ulong vaddr;
+    target_ulong paddr;
+    uint64_t flags;
+    uint64_t icount;
+} log_t;
+
+typedef struct {
     void   *head;
     void   *tail;
 } batch_t;

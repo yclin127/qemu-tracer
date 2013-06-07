@@ -1,8 +1,6 @@
 #ifndef __CACHE_FILTER_H__
 #define __CACHE_FILTER_H__
 
-#include "tracer/common.h"
-
 extern int cache_line_bits;
 extern int cache_set_bits;
 extern int cache_way_count;
