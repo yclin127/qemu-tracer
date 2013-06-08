@@ -129,10 +129,12 @@ static void *cache_filter_main(void *args)
     const request_t *ifetch_table = NULL;
     const request_t *ifetch_ptr;
     int ifetch_count = 0;
+
+    // this must called before cache_create, 
+    // because it also reads in cache config.
+    trace_file_init();
     
     cache_create();
-
-    trace_file_init();
     
     qemu_sem_post(&cache_filter_ready);
     
