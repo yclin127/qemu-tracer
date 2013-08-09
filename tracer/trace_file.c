@@ -28,9 +28,17 @@ static void trace_file_flush(void)
 
 void trace_file_init(void)
 {
+    int pipe_in[2]; // to backend
+    int pipe_out[2]; // from backend
+
     batch.head = g_malloc(BATCH_SIZE);
     
-    if (pipe(backend)) {
+    if (pipe(pipe_in)) {
+        fprintf(stderr, "an error occurred in pipe().\n");
+        exit(-1);
+    }
+    
+    if (pipe(pipe_out)) {
         fprintf(stderr, "an error occurred in pipe().\n");
         exit(-1);
     }
@@ -40,23 +48,35 @@ void trace_file_init(void)
         case -1:
             fprintf(stderr, "an error occurred in fork().\n");
             exit(-1);
+            break;
+
         case 0:
-            dup2(backend[0], 0);
-            close(backend[0]);
-            dup2(backend[1], 1);
-            close(backend[1]);
+            dup2(pipe_in[0], 0);
+            close(pipe_in[0]);
+            close(pipe_in[1]);
+            dup2(pipe_out[1], 1);
+            close(pipe_out[0]);
+            close(pipe_out[1]);
             execlp(path, "python", NULL);
             fprintf(stderr, "an error occurred in exec(\"%s\").\n", path);
             exit(-1);
+            break;
+
+        default:
+            backend[0] = pipe_out[0];
+            backend[1] = pipe_in[1];
+            close(pipe_out[1]);
+            close(pipe_in[0]);
+    
+            safe_read(backend[0], &cache_line_bits, sizeof(int));
+            safe_read(backend[0], &cache_set_bits, sizeof(int));
+            safe_read(backend[0], &cache_way_count, sizeof(int));
+            
+            safe_read(backend[0], &tlb_page_bits, sizeof(int));
+            safe_read(backend[0], &tlb_set_bits, sizeof(int));
+            safe_read(backend[0], &tlb_way_count, sizeof(int));
+            break;
     }
-    
-    safe_read(backend[0], &cache_line_bits, sizeof(int));
-    safe_read(backend[0], &cache_set_bits, sizeof(int));
-    safe_read(backend[0], &cache_way_count, sizeof(int));
-    
-    safe_read(backend[0], &tlb_page_bits, sizeof(int));
-    safe_read(backend[0], &tlb_set_bits, sizeof(int));
-    safe_read(backend[0], &tlb_way_count, sizeof(int));
 }
 
 void trace_file_begin(void)
