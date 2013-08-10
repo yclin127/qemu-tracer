@@ -142,25 +142,25 @@ static void *cache_filter_main(void *args)
         batch = sync_queue_get(1);
         request = (request_t *)batch->head;
         
-        // iblock with a NULL pointer is used to begin a new trace
-        if (unlikely(!request->type.flags && request->pointer == NULL)) {
-            trace_file_begin();
-            lru_reset(&cache);
-            icount = 0;
-            ++request;
-        }
-        // iblock with a -1 pointer is used to end current trace
-        if (unlikely(!request->type.flags && request->pointer == (void *)-1)) {
-            trace_file_end();
-            ++request;
-        }
-        
         for(; request < (request_t *)batch->tail; ++request) {
             // iblock
             if (!request->type.flags) {
-                ifetch_table = request->pointer;
-                ifetch_count = 0;
+                if (unlikely(request->pointer == NULL)) {
+                    // iblock with a NULL pointer is used to begin a new trace
+                    trace_file_begin();
+                    lru_reset(&cache);
+                    icount = 0;
+                    continue;
+                } else if (unlikely(request->pointer == (void *)-1)) {
+                    // iblock with a -1 pointer is used to end current trace
+                    trace_file_end();
+                    continue;
+                } else {
+                    ifetch_table = request->pointer;
+                    ifetch_count = 0;
+                }
             }
+            
             // FIXME iblock of the first block may be missing. skip all dfetch & istep!
             if (unlikely(!ifetch_table)) {
                 continue;
@@ -169,7 +169,6 @@ static void *cache_filter_main(void *args)
             // dfetch & ifetch
             if (request->type.flags) {
                 cache_access(request, icount);
-                icount += request->type.count;
             }
             
             // istep

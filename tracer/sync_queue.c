@@ -55,7 +55,8 @@ void sync_queue_flush(void)
     
     uint32_t counter = 0;
     while (tail != fifo.tail[CURSOR_COUNT-1]) {
-        if (!(++counter & 0x3fff))
+        if (!(++counter & 0x3fff)) {
             usleep(128);
+        }
     }
 }

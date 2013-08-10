@@ -20,7 +20,7 @@ void memory_tracer_init(void)
     }
 }
 
-static batch_t *memory_tracer_next_batch(void) 
+static batch_t *memory_tracer_next_batch(void)
 {
     batch_t *next_batch;
     
@@ -41,11 +41,10 @@ void memory_tracer_toggle(void)
         batch->tail = (void *)(request+1);
     } else {
         // end current trace by a batch beginning with a (-1)-pointer iblock
-        batch = memory_tracer_next_batch();
         request_t *request = (request_t *)batch->tail;
         request->pointer = (void *)-1;
         request->type.value = 0;
-        batch = memory_tracer_next_batch();
+        batch->tail = (void *)(request+1);
         // flush current trace
         memory_tracer_flush();
     }
