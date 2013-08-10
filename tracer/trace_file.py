@@ -21,14 +21,15 @@ stdout.flush()
   Trace Logger
 '''
 
-TRACER_TYPE_INSN = 0x1
-TRACER_TYPE_DATA = 0x2
-TRACER_TYPE_READ = 0x4
+TRACER_TYPE_INSN  = 0x1
+TRACER_TYPE_DATA  = 0x2
+TRACER_TYPE_READ  = 0x4
 TRACER_TYPE_WRITE = 0x8
-TRACER_TYPE_MEM_READ = 0x10
+TRACER_TYPE_MEM_READ  = 0x10
 TRACER_TYPE_MEM_WRITE = 0x20
-TRACER_TYPE_TLB_WALK = 0x40
-TRACER_TYPE_MEM_MMU = lambda flags: (flags>>16)&0xf
+TRACER_TYPE_TLB_WALK  = 0x40
+TRACER_TYPE_TLB_EVICT = 0x80
+TRACER_TYPE_MEM_MMU   = lambda flags: (flags>>16)&0xf
 TRACER_TYPE_MEM_VCORE = lambda flags: (flags>>24)&0xf
 
 from ctypes import *
@@ -42,6 +43,7 @@ class RECORD(Structure):
 	]
 
 def log(batch):
+	global G_icount, G_access, G_read, G_write
 	for record in batch:
 		'''
 		record.vaddr: virtual address
@@ -49,15 +51,29 @@ def log(batch):
 		record.flags: access information (see TRACER_TYPE_* definition)
 		record.icount: instruction count
 		'''
-		pass
+		for access in batch:
+			if access.flags & TRACER_TYPE_MEM_READ:
+				G_access += 1
+				G_read += 1
+			elif access.flags & TRACER_TYPE_MEM_WRITE:
+				G_access += 1
+				G_write += 1
+			if access.icount - G_icount > 100000:
+				print >> stderr, access.icount, G_access, G_read, G_write
+				G_icount += 100000
 
 def on_pipe(fd, condition):
+	global G_access, G_read, G_write, G_icount
 	length = (c_int*1)()
 	stdin.readinto(length)
 	length = length[0]
 	# trace begin
 	if length == 0:
 		print >> stderr, '=== trace begin ==='
+		G_access = 0
+		G_read = 0
+		G_write = 0
+		G_icount = 0
 	# trace end
 	elif length == -1:
 		print >> stderr, '=== trace end ==='
