@@ -17,21 +17,23 @@ static int backend[2];
     }
 
 static void trace_file_flush(void)
-{
-    int size = batch.tail-batch.head;
+{   
+    if (batch.tail != batch.head) {
+        int size = batch.tail-batch.head;
     
-    safe_write(backend[1], &size, sizeof(size));
-    safe_write(backend[1], batch.head, size);
-    
-    batch.tail = batch.head;
+        safe_write(backend[1], &size, sizeof(size));
+        safe_write(backend[1], batch.head, size);
+        
+        batch.tail = batch.head;
+    }
 }
 
 void trace_file_init(void)
 {
+    batch.head = g_malloc(BATCH_SIZE);
+    
     int pipe_in[2]; // to backend
     int pipe_out[2]; // from backend
-
-    batch.head = g_malloc(BATCH_SIZE);
     
     if (pipe(pipe_in)) {
         fprintf(stderr, "an error occurred in pipe().\n");

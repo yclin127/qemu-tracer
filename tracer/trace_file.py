@@ -43,7 +43,6 @@ class RECORD(Structure):
 	]
 
 def log(batch):
-	global G_icount, G_access, G_read, G_write
 	for record in batch:
 		'''
 		record.vaddr: virtual address
@@ -51,29 +50,15 @@ def log(batch):
 		record.flags: access information (see TRACER_TYPE_* definition)
 		record.icount: instruction count
 		'''
-		for access in batch:
-			if access.flags & TRACER_TYPE_MEM_READ:
-				G_access += 1
-				G_read += 1
-			elif access.flags & TRACER_TYPE_MEM_WRITE:
-				G_access += 1
-				G_write += 1
-			if access.icount - G_icount > 100000:
-				print >> stderr, access.icount, G_access, G_read, G_write
-				G_icount += 100000
+		pass
 
 def on_pipe(fd, condition):
-	global G_access, G_read, G_write, G_icount
 	length = (c_int*1)()
 	stdin.readinto(length)
 	length = length[0]
 	# trace begin
 	if length == 0:
 		print >> stderr, '=== trace begin ==='
-		G_access = 0
-		G_read = 0
-		G_write = 0
-		G_icount = 0
 	# trace end
 	elif length == -1:
 		print >> stderr, '=== trace end ==='

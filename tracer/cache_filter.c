@@ -54,7 +54,7 @@ static inline void cache_access(const request_t *request, uint64_t icount)
         if (unlikely(line->tag != vaddr)) {
             if (line->tag != -1) {
                 // evict
-                //trace_file_log(line->tag, tlb_data->ptag, TRACER_TYPE_TLB_EVICT, icount);
+                trace_file_log(line->tag, tlb_data->ptag, TRACER_TYPE_TLB_EVICT, icount);
             }
             // tlb walk
             trace_file_log(vaddr, paddr, request->type.flags | TRACER_TYPE_TLB_WALK, icount);
@@ -174,8 +174,8 @@ static void *cache_filter_main(void *args)
             // istep
             for (; ifetch_count < request->type.count; ++ifetch_count) {
                 ifetch_ptr = &ifetch_table[ifetch_count];
-                cache_access(ifetch_ptr, icount);
                 icount += ifetch_ptr->type.count;
+                cache_access(ifetch_ptr, icount);
             }
         }
         
